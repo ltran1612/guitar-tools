@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Guitar Tuner & Metronome</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+            background-color: #f0f0f0;
+        }
+
+        .container {
+            text-align: center;
+            max-width: 800px;
+            width: 100%;
+            overflow: hidden;
+        }
+
+        .view-selector {
+            margin-bottom: 20px;
+        }
+
+        .view-selector select {
+            padding: 8px 16px;
+            font-size: 16px;
+            border-radius: 4px;
+            border: 1px solid #ccc;
+        }
+
+        .controls {
+            margin: 20px 0;
+            padding: 20px;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .mic-selector {
+            margin-bottom: 20px;
+        }
+
+        .mic-selector select {
+            padding: 8px 16px;
+            font-size: 16px;
+            border-radius: 4px;
+            border: 1px solid #ccc;
+            width: 100%;
+            max-width: 300px;
+        }
+
+        .tuning-status {
+            font-size: 24px;
+            margin: 20px 0;
+            min-height: 36px;
+        }
+
+        .frequency-display {
+            font-size: 18px;
+            color: #666;
+            margin: 10px 0;
+        }
+
+        .note-buttons {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+            gap: 10px;
+            margin: 20px 0;
+        }
+
+        .note-button {
+            padding: 15px;
+            font-size: 18px;
+            border: none;
+            border-radius: 4px;
+            background-color: #4CAF50;
+            color: white;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .note-button:hover {
+            background-color: #45a049;
+        }
+
+        .note-button.active {
+            background-color: #2196F3;
+        }
+
+        .guitar-view {
+            display: none;
+            margin: 70px 0 20px 0;
+            perspective: 1000px;
+            overflow: hidden;
+        }
+
+        .guitar-view.active {
+            display: block;
+        }
+
+        .guitar {
+            position: relative;
+            width: 220px;
+            height: 400px;
+            margin: 0 auto;
+            transform: rotateX(10deg);
+            transform-style: preserve-3d;
+            overflow: hidden;
+        }
+
+        .guitar-neck {
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 220px;
+            height: 400px;
+            background: linear-gradient(to right, #8B4513, #A0522D);
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+            font-size: 0;
+            color: transparent;
+            text-indent: -9999px;
+            line-height: 0;
+        }
+
+        .guitar-strings {
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 200px;
+            height: 400px;
+            z-index: 2;
+            font-size: 0;
+            color: transparent;
+            text-indent: -9999px;
+            line-height: 0;
+        }
+
+        .string {
+            position: absolute;
+            width: 2px;
+            height: 100%;
+            background-color: #ccc;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            font-size: 0;
+            color: transparent;
+            text-indent: -9999px;
+            line-height: 0;
+        }
+
+        .string:hover {
+            background-color: #fff;
+        }
+
+        .string.active {
+            background-color: #2196F3;
+        }
+
+        .string-label {
+            display: none;
+        }
+
+        .string:nth-child(1) { left: 10px; }
+        .string:nth-child(2) { left: 46px; }
+        .string:nth-child(3) { left: 82px; }
+        .string:nth-child(4) { left: 118px; }
+        .string:nth-child(5) { left: 154px; }
+        .string:nth-child(6) { left: 190px; }
+
+        .fret-marker {
+            position: absolute;
+            width: 100%;
+            height: 2px;
+            background-color: #666;
+            z-index: 1;
+        }
+
+        .fret-marker::after {
+            content: '';
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            background-color: #666;
+            border-radius: 50%;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+
+        .fret-marker:nth-child(1) { top: 50px; }
+        .fret-marker:nth-child(2) { top: 100px; }
+        .fret-marker:nth-child(3) { top: 150px; }
+        .fret-marker:nth-child(4) { top: 200px; }
+        .fret-marker:nth-child(5) { top: 250px; }
+        .fret-marker:nth-child(6) { top: 300px; }
+        .fret-marker:nth-child(7) { top: 350px; }
+
+        .start-button {
+            padding: 15px 30px;
+            font-size: 18px;
+            background-color: #2196F3;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .start-button:hover {
+            background-color: #1976D2;
+        }
+
+        .start-button.listening {
+            background-color: #f44336;
+        }
+
+        /* Metronome Styles */
+        .metronome-view {
+            display: none;
+            margin: 20px 0;
+        }
+
+        .metronome-view.active {
+            display: block;
+        }
+
+        .metronome-display {
+            font-size: 48px;
+            font-weight: bold;
+            margin: 20px 0;
+            color: #2196F3;
+            min-height: 60px;
+        }
+
+        .metronome-display.playing {
+            animation: pulse 0.5s ease-in-out;
+        }
+
+        .metronome-display.accent {
+            color: #f44336;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+
+        .tempo-controls {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 20px;
+            margin: 20px 0;
+            flex-wrap: wrap;
+        }
+
+        .tempo-control {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .tempo-control label {
+            font-weight: bold;
+            color: #333;
+        }
+
+        .tempo-control input[type="range"] {
+            width: 200px;
+        }
+
+        .tempo-control input[type="number"] {
+            width: 80px;
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            text-align: center;
+            font-size: 16px;
+        }
+
+        .time-signature-controls {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            margin: 20px 0;
+        }
+
+        .time-signature-controls select {
+            padding: 8px 16px;
+            font-size: 16px;
+            border-radius: 4px;
+            border: 1px solid #ccc;
+        }
+
+        .metronome-buttons {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin: 20px 0;
+        }
+
+        .metronome-button {
+            padding: 15px 30px;
+            font-size: 18px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .metronome-start {
+            background-color: #4CAF50;
+            color: white;
+        }
+
+        .metronome-start:hover {
+            background-color: #45a049;
+        }
+
+        .metronome-start.playing {
+            background-color: #f44336;
+        }
+
+        .metronome-start.playing:hover {
+            background-color: #d32f2f;
+        }
+
+        .beat-indicator {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin: 20px 0;
+        }
+
+        .beat-dot {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background-color: #ddd;
+            transition: background-color 0.1s;
+        }
+
+        .beat-dot.active {
+            background-color: #2196F3;
+        }
+
+        .beat-dot.accent {
+            background-color: #f44336;
+        }
+
+        /* Score Tuner Styles */
+        .score-tuner-view {
+            display: none;
+            margin: 20px 0;
+        }
+
+        .sheet-music-info {
+            margin-bottom: 20px;
+        }
+
+        .sheet-music-info h3 {
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+
+        .sheet-music-info p {
+            font-size: 16px;
+            color: #666;
+        }
+
+        .staff-container {
+            margin-bottom: 20px;
+        }
+
+        .score-selected-info {
+            margin-bottom: 20px;
+        }
+
+        .frequency-info {
+            margin-bottom: 20px;
+        }
+
+        .label {
+            font-weight: bold;
+            color: #333;
+        }
+
+        .value {
+            font-size: 18px;
+            color: #666;
+        }
+
+        .play-note-button {
+            padding: 15px 30px;
+            font-size: 18px;
+            background-color: #2196F3;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .play-note-button:hover {
+            background-color: #1976D2;
+        }
+
+        .view-btn {
+            padding: 10px 20px;
+            margin: 0 5px;
+            font-size: 16px;
+            border: none;
+            border-radius: 4px;
+            background-color: #2196F3;
+            color: white;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        .view-btn.active {
+            background-color: #1976D2;
+        }
+        .view-btn:hover {
+            background-color: #1976D2;
+        }
+
+        .side-ad {
+            position: fixed;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 160px;
+            z-index: 1000;
+        }
+        .side-ad.left {
+            left: 0;
+        }
+        .side-ad.right {
+            right: 0;
+        }
+        @media (max-width: 1000px) {
+            .side-ad { display: none; }
+        }
+    </style>
+</head>
+<body>
+    <!-- Google AdSense Left Side Ad -->
+    <div class="side-ad left">
+      <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+      <ins class="adsbygoogle"
+           style="display:block;width:160px;height:600px;"
+           data-ad-client="ca-pub-XXXXXXXXXXXXXXXX"
+           data-ad-slot="YYYYYYYYYY"></ins>
+      <script>
+           (adsbygoogle = window.adsbygoogle || []).push({});
+      </script>
+    </div>
+    <!-- Google AdSense Right Side Ad -->
+    <div class="side-ad right">
+      <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+      <ins class="adsbygoogle"
+           style="display:block;width:160px;height:600px;"
+           data-ad-client="ca-pub-XXXXXXXXXXXXXXXX"
+           data-ad-slot="YYYYYYYYYY"></ins>
+      <script>
+           (adsbygoogle = window.adsbygoogle || []).push({});
+      </script>
+    </div>
+    <div class="container">
+        <h1>Guitar Tuner & Metronome</h1>
+        
+        <div class="view-selector">
+            <button class="view-btn" data-view="basic" id="btnBasic">Basic Tuner</button>
+            <button class="view-btn" data-view="metronome" id="btnMetronome">Metronome</button>
+        </div>
+
+        <div class="controls">
+            <!-- Tuner Views -->
+            <div id="tunerViews">
+                <div class="mic-selector">
+                    <select id="micSelect">
+                        <option value="">Select Microphone</option>
+                    </select>
+                </div>
+
+                <div class="tuning-status" id="tuningStatus"></div>
+                <div class="frequency-display" id="frequencyDisplay"></div>
+
+                <div id="basicView" class="note-buttons">
+                    <button class="note-button" data-note="E2">E2</button>
+                    <button class="note-button" data-note="A2">A2</button>
+                    <button class="note-button" data-note="D3">D3</button>
+                    <button class="note-button" data-note="G3">G3</button>
+                    <button class="note-button" data-note="B3">B3</button>
+                    <button class="note-button" data-note="E4">E4</button>
+                </div>
+
+                <button id="startButton" class="start-button">Start Tuning</button>
+            </div>
+
+            <!-- Metronome View -->
+            <div id="metronomeView" class="metronome-view">
+                <div class="metronome-display" id="metronomeDisplay">120 BPM</div>
+                
+                <div class="beat-indicator" id="beatIndicator">
+                    <div class="beat-dot"></div>
+                    <div class="beat-dot"></div>
+                    <div class="beat-dot"></div>
+                    <div class="beat-dot"></div>
+                </div>
+
+                <div class="tempo-controls">
+                    <div class="tempo-control">
+                        <label for="tempoSlider">Tempo (BPM)</label>
+                        <input type="range" id="tempoSlider" min="40" max="200" value="120" step="1">
+                        <input type="number" id="tempoInput" min="40" max="200" value="120" step="1">
+                    </div>
+                    
+                    <div class="tempo-control">
+                        <label for="volumeSlider">Volume</label>
+                        <input type="range" id="volumeSlider" min="0" max="100" value="50" step="1">
+                        <span id="volumeDisplay">50%</span>
+                    </div>
+                </div>
+
+                <div class="time-signature-controls">
+                    <label>Time Signature:</label>
+                    <select id="beatsSelect">
+                        <option value="2">2</option>
+                        <option value="3">3</option>
+                        <option value="4" selected>4</option>
+                        <option value="5">5</option>
+                        <option value="6">6</option>
+                        <option value="7">7</option>
+                        <option value="8">8</option>
+                    </select>
+                    <span>/</span>
+                    <select id="divisionSelect">
+                        <option value="2">2</option>
+                        <option value="4" selected>4</option>
+                        <option value="8">8</option>
+                        <option value="16">16</option>
+                    </select>
+                </div>
+
+                <div class="metronome-buttons">
+                    <button id="metronomeStartButton" class="metronome-button metronome-start">Start Metronome</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="music-sheet-section" style="margin: 30px 0; text-align: center;">
+            <h2>Music Sheets</h2>
+            <input type="file" id="pdfInput" accept="application/pdf" style="margin-bottom: 15px;" />
+            <div id="pdfViewer" style="border: 1px solid #ccc; min-height: 400px; margin-top: 10px; display: flex; justify-content: center; align-items: flex-start; overflow-x: auto;"></div>
+        </div>
+    </div>
+
+    <script type="module" src="note-detector.js"></script>
+    <script type="module" src="metronome.js"></script>
+    <script type="module" src="tuner.js"></script>
+    <script type="module">
+    import * as pdfjsLib from 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/5.3.31/pdf.mjs';
+
+    document.addEventListener('DOMContentLoaded', function() {
+        const pdfInput = document.getElementById('pdfInput');
+        const pdfViewer = document.getElementById('pdfViewer');
+
+        if (pdfInput) {
+            pdfInput.addEventListener('change', async (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                
+                const blobUrl = URL.createObjectURL(file);
+
+                const fileReader = new FileReader();
+                fileReader.onload = async function() {
+                    const typedarray = new Uint8Array(this.result);
+                    pdfViewer.innerHTML = '';
+                    pdfjsLib.GlobalWorkerOptions.workerSrc =
+                        'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/5.3.31/pdf.worker.min.mjs';
+                    const loadingTask = pdfjsLib.getDocument({ data: typedarray });
+                    const pdf = await loadingTask.promise;
+                    for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+                        const page = await pdf.getPage(pageNum);
+                        const viewport = page.getViewport({ scale: 1.5 });
+                        const canvas = document.createElement('canvas');
+                        canvas.width = viewport.width;
+                        canvas.height = viewport.height;
+                        const context = canvas.getContext('2d');
+                        await page.render({ canvasContext: context, viewport: viewport }).promise;
+                        pdfViewer.appendChild(canvas);
+                    }
+                };
+                fileReader.readAsArrayBuffer(file);
+            });
+        }
+    });
+    </script>
+</body>
+</html> 
