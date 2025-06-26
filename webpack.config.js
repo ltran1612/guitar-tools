@@ -1,9 +1,9 @@
 const path = require('path');
 
 module.exports = {
-  entry: './tuner.js',
+  entry: './src/tuner.js',
   output: {
-    path: path.resolve(__dirname, 'dist'),
+    path: path.resolve(__dirname, 'public'),
     filename: 'bundle.js',
   },
 };
