@@ -53,13 +53,14 @@ export class Metronome {
         this.currentBeat = 0;
         
         const intervalMs = (60 / this.tempo) * 1000;
-        this.intervalId = setInterval(() => {
-            this.playClick();
-            this.currentBeat = (this.currentBeat + 1) % this.timeSignature.beats;
-        }, intervalMs);
         
-        // Play first click immediately
+        // Play first click immediately and set up interval for subsequent clicks
         this.playClick();
+        
+        this.intervalId = setInterval(() => {
+            this.currentBeat = (this.currentBeat + 1) % this.timeSignature.beats;
+            this.playClick();
+        }, intervalMs);
     }
 
     stop() {

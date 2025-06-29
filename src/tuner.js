@@ -214,7 +214,7 @@ export class Tuner {
         
         // Update beat indicator
         if (this.metronome.isPlaying) {
-            const currentBeat = this.metronome.getCurrentBeat() - 1;
+            const currentBeat = this.metronome.currentBeat;
             const isAccent = this.metronome.isAccentBeat();
             
             // Reset all dots
@@ -227,21 +227,18 @@ export class Tuner {
                 }
             });
             
-            // Highlight current beat
+            // Highlight current beat (including the accent beat)
             if (beatDots[currentBeat]) {
                 beatDots[currentBeat].classList.add('active');
-                if (isAccent) {
-                    display.classList.add('accent');
-                } else {
-                    display.classList.remove('accent');
-                }
-                display.classList.add('playing');
-                
-                // Remove playing class after animation
-                setTimeout(() => {
-                    display.classList.remove('playing');
-                }, 500);
             }
+            
+            // Add playing animation but don't change color for accent beats
+            display.classList.add('playing');
+            
+            // Remove playing class after animation
+            setTimeout(() => {
+                display.classList.remove('playing');
+            }, 500);
         }
     }
 
