@@ -1,9 +1,33 @@
 {
   "name": "guitar-tuner",
   "version": "1.0.0",
-  "description": "A web-based guitar tuner using Web Audio API",
+  "description": "A free web-based guitar tuner using Web Audio API with microphone support, metronome, and sheet music viewer",
+  "keywords": [
+    "guitar-tuner",
+    "online-tuner",
+    "metronome",
+    "music",
+    "guitar",
+    "tuning",
+    "web-audio",
+    "frequency-detection",
+    "sheet-music",
+    "pwa"
+  ],
+  "author": "Guitar Tuner Team",
+  "license": "MIT",
+  "homepage": "https://your-domain.com",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-username/guitar-tuner.git"
+  },
+  "bugs": {
+    "url": "https://github.com/your-username/guitar-tuner/issues"
+  },
   "scripts": {
-    "build": "webpack --mode=development"
+    "build": "webpack --mode=development",
+    "build:prod": "webpack --mode=production",
+    "dev": "webpack --mode=development --watch"
   },
   "devDependencies": {
     "webpack": "^5.99.9",
